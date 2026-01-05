@@ -6,7 +6,7 @@ import io
 import base64
 import zipfile
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 # You need to get the API Key from: https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey
 # The AK/SK provided are for account access, not direct API calls
