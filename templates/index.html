@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image to STL Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 36px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        h2 {
+            color: #555;
+            margin: 20px 0 15px 0;
+            font-size: 1.3em;
+        }
+        
+        h3 {
+            color: #666;
+            margin: 15px 0 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        input[type="text"], 
+        input[type="number"], 
+        select {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+            background: #f0f4ff;
+            color: #667eea;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        progress {
+            width: 100%;
+            height: 8px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        #images {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        #images img {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: #fff;
+            border: 3px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #images img:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+        
+        #images img.selected {
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2);
+        }
+
+        .selection-layout {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .selection-canvas-wrap {
+            flex: 0 0 420px;
+            min-width: 420px;
+        }
+
+        .selection-tools {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-self: stretch;
+        }
+        
+        #editedImageDisplay {
+            max-width: 300px;
+            max-height: 300px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        
+        #canvas, #selectCanvas {
+            border: 2px solid #ddd;
+            margin: 20px 0;
+            cursor: crosshair;
+            display: none;
+            max-width: 100%;
+            background: white;
+            border-radius: 6px;
+            pointer-events: auto;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        input[type="radio"],
+        input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        
+        input[type="range"] {
+            width: 150px;
+        }
+        
+        #layers {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .layer-item {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            text-align: left;
+            background: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            height: 100%;
+            box-sizing: border-box;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .layer-item.active {
+            border-color: #1976d2;
+            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+        }
+
+        .layer-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
+            flex-grow: 1;
+        }
+
+        .layer-controls label {
+            display: flex;
+            flex-direction: row;
+            gap: 5px;
+            font-size: 13px;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 28px;
+            min-width: 0;
+            flex-wrap: nowrap;
+        }
+
+        .layer-controls input,
+        .layer-controls select,
+        .layer-controls strong {
+            width: 100%;
+            font-size: 13px;
+            font-weight: normal;
+            min-width: 0;
+            flex-shrink: 1;
+        }
+        
+        .layer-item h3 {
+            margin: 0 0 2px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .layer-item button {
+            width: 100%;
+        }
+        
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 AI Image to STL Generator</h1>
+        
+        <!-- Image Generation Section -->
+        <div class="section">
+            <h2>Step 1: Generate Images</h2>
+            <div class="input-group">
+                <input type="text" id="prompt" placeholder="Describe what you want to generate (e.g., cat, heart, star)">
+                <button id="generate">Generate Images</button>
+            </div>
+            <div id="status" class="status">Ready to generate images</div>
+            <div id="images"></div>
+        </div>
+        
+        <!-- Image Selection Section -->
+        <div class="section" id="selectionSection" style="display: none;">
+            <h2>Step 2: Select & Edit Image</h2>
+            <button id="select" style="display: none;">Edit Selected Image</button>
+            
+            <!-- Drawing Canvas -->
+            <div id="drawingSection" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>Draw on Image</h3>
+                    <button id="backToImages" style="padding: 6px 12px;">← Back to Image Selection</button>
+                </div>
+                <div class="controls">
+                    <label>Pen Color:
+                        <input type="radio" name="penColor" value="black" checked> Black
+                        <input type="radio" name="penColor" value="white"> White
+                    </label>
+                    <label>
+                        Brush Size: <input type="range" id="brushSize" min="1" max="50" value="5">
+                        <span id="brushSizeLabel">5 px</span>
+                    </label>
+                    <button id="bucketBtn">Paint Bucket</button>
+                    <button id="undoBtn">↶ Undo</button>
+                    <button id="redoBtn">↷ Redo</button>
+                </div>
+                <canvas id="canvas" width="400" height="400"></canvas>
+                <button id="editDone" style="display: none;">Done Editing</button>
+            </div>
+            
+            <!-- Layer Setup -->
+            <div id="layerSetup" style="display: none;">
+                <div style="display: flex; align-items: flex-start; gap: 20px;">
+                    <img id="layerSetupPreview" style="width: 400px; height: 400px; object-fit: contain; border: 2px solid #ddd; border-radius: 6px; display: none;">
+                    <div style="width: 300px; display: flex; flex-direction: column; gap: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">Layer Configuration</h3>
+                            <button id="backToEdit" style="padding: 6px 12px;">← Back to Edit</button>
+                        </div>
+                        <label style="display: flex; flex-direction: column; gap: 5px; width: 100%;">
+                            Number of Layers:
+                            <input type="number" id="numLayers" min="1" max="10" value="1" style="width: 100%; box-sizing: border-box;">
+                        </label>
+                        <label style="display: flex; flex-direction: column; gap: 5px; width: 100%;">
+                            Total Model Length (mm):
+                            <input type="number" id="totalLength" min="1" max="100" value="10" step="0.1" style="width: 100%; box-sizing: border-box;">
+                        </label>
+                        <button id="setLayers" style="width: 100%; box-sizing: border-box;">Configure Layers</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Layer Selection -->
+            <div id="layersHeader" style="display: none; margin-bottom: 10px;">
+                <button id="reconfigureLayers" style="padding: 6px 12px;">← Reconfigure Layers</button>
+            </div>
+            <div id="layers"></div>
+            
+            <!-- Selection Canvas Section (replaces static image display) -->
+            <div id="selectionSection2" style="display: none;">
+                <h3>Select Shape for Layer</h3>
+                <div class="selection-layout">
+                    <div class="selection-canvas-wrap">
+                        <div class="controls" id="zoomControls" style="display:none; gap:8px; margin:0 0 8px 0; padding:0; align-items:center; font-size:15px; width:fit-content;">
+                            <span style="font-size:15px;">Zoom:</span>
+                            <button id="zoomOut" style="width:32px; height:28px; font-size:18px; font-weight:700; padding:0;">-</button>
+                            <button id="zoomIn" style="width:32px; height:28px; font-size:18px; font-weight:700; padding:0;">+</button>
+                            <span id="zoomLabel" style="font-size:15px; min-width:45px;">100%</span>
+                        </div>
+                        <canvas id="selectCanvas" width="400" height="400" style="display:none;"></canvas>
+                    </div>
+                    <div class="selection-tools" id="selectionControls" style="display:none;">
+                        <div class="controls" style="margin:12px 0 4px 0; padding:12px; gap:8px; display:flex; flex-direction:column;">
+                            <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                                <label>
+                                    <input type="radio" name="selMode" value="wand" checked> 💫 Magic Wand
+                                </label>
+                                <label>
+                                    <input type="radio" name="selMode" value="lasso"> 🧵 Lasso
+                                </label>
+                            </div>
+                            <div id="lassoOptions" style="display:none;">
+                                <label style="width: 100%;">
+                                    <select id="lassoMode" style="width:100%; box-sizing: border-box;">
+                                        <option value="dominant">Dominant Color Only</option>
+                                        <option value="black">Black Area Only</option>
+                                        <option value="white">White Area Only</option>
+                                        <option value="all">All Pixels in Area</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="controls" style="margin:0 0 6px 0; padding:12px; gap:15px; display:flex; flex-wrap:wrap;">
+                            <label>
+                                <input type="radio" name="editMode" value="add" checked> ➕ Add Mode
+                            </label>
+                            <label>
+                                <input type="radio" name="editMode" value="subtract"> ➖ Subtract Mode
+                            </label>
+                        </div>
+                        <div id="selectInfo" style="display:none;" class="info-box">
+                            <p id="selectInfoText"></p>
+                        </div>
+                        <div class="controls" style="background: white; border: none; padding: 0;">
+                            <button id="undoSelection" style="display: none;">↶ Undo</button>
+                            <button id="redoSelection" style="display: none;">↷ Redo</button>
+                            <button id="clearSelection" style="display: none;">Clear Selection</button>
+                            <button id="confirmSelection" style="display: none;">Confirm Selection</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hidden image reference for layer setup -->
+            <img id="editedImageDisplay" style="display: none;">
+            
+            <!-- Layer Setup -->
+            <div id="layerSetup" style="display: none;">
+                <div style="display: flex; align-items: flex-start; gap: 20px;">
+                    <img id="layerSetupPreview" style="width: 400px; height: 400px; object-fit: contain; border: 2px solid #ddd; border-radius: 6px; display: none;">
+                    <div style="width: 300px; display: flex; flex-direction: column; gap: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0;">Layer Configuration</h3>
+                            <button id="backToEdit" style="padding: 6px 12px;">← Back to Edit</button>
+                        </div>
+                        <label style="display: flex; flex-direction: column; gap: 5px; width: 100%;">
+                            Number of Layers:
+                            <input type="number" id="numLayers" min="1" max="10" value="1" style="width: 100%; box-sizing: border-box;">
+                        </label>
+                        <label style="display: flex; flex-direction: column; gap: 5px; width: 100%;">
+                            Total Model Length (mm):
+                            <input type="number" id="totalLength" min="1" max="100" value="10" step="0.1" style="width: 100%; box-sizing: border-box;">
+                        </label>
+                        <button id="setLayers" style="width: 100%; box-sizing: border-box;">Configure Layers</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- STL Generation Section -->
+        <div class="section">
+            <button id="generateSTL" style="display: none;">Generate STL Files</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedImage = null;
+        let editedImage = null;
+        let layerSelections = {};
+        let layerHeights = {};
+        let currentLayerIndex = -1;
+        let lassoPath = [];
+        let isDrawingLasso = false;
+        let selectionMode = 'lasso';
+        let editMode = 'add';
+        let wandPoint = null;
+        let currentSelection = null;
+        let selectionZoom = 1;
+
+        // Generate Images
+        document.getElementById('generate').addEventListener('click', async () => {
+            const prompt = document.getElementById('prompt').value;
+            if (!prompt.trim()) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            const imagesDiv = document.getElementById('images');
+            const status = document.getElementById('status');
+            
+            imagesDiv.innerHTML = '';
+            status.textContent = 'Starting generation...';
+            
+            let firstImageShown = false;
+            for (let i = 0; i < 4; i++) {
+                status.textContent = `Generating image ${i+1}/4...`;
+                try {
+                    const response = await fetch('/generate_images', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.image) {
+                        const imgElement = document.createElement('img');
+                        imgElement.src = 'data:image/png;base64,' + data.image;
+                        imgElement.onclick = () => selectImage(data.image, imgElement);
+                        imagesDiv.appendChild(imgElement);
+                        if (!firstImageShown) {
+                            document.getElementById('selectionSection').style.display = 'block';
+                            status.textContent = 'First image ready—click one to edit while others generate.';
+                            firstImageShown = true;
+                        }
+                    } else {
+                        status.textContent = `Failed to generate image ${i+1}`;
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    status.textContent = 'Error generating images';
+                }
+            }
+            
+            status.textContent = 'All images generated! Select one to continue.';
+            document.getElementById('selectionSection').style.display = 'block';
+        });
+
+        // Select Image
+        function selectImage(img, imgElement) {
+            selectedImage = img;
+            document.querySelectorAll('#images img.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+            if (imgElement) {
+                imgElement.classList.add('selected');
+            }
+            document.getElementById('select').style.display = 'block';
+        }
+
+        // Edit Selected Image
+        document.getElementById('select').addEventListener('click', () => {
+            editedImage = selectedImage;
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            
+            img.src = 'data:image/png;base64,' + selectedImage;
+            
+            document.getElementById('images').style.display = 'none';
+            document.getElementById('select').style.display = 'none';
+            document.getElementById('drawingSection').style.display = 'block';
+            canvas.style.display = 'block';
+            document.getElementById('editDone').style.display = 'block';
+        });
+
+        // Drawing Functions
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        let penColor = 'black';
+        let undoStack = [];
+        let redoStack = [];
+        let brushSize = 5;
+        let bucketMode = false;
+        let lastDrawPoint = null;
+
+        function setBucketButtonState() {
+            const btn = document.getElementById('bucketBtn');
+            if (!btn) return;
+            btn.textContent = bucketMode ? 'Bucket (On)' : 'Paint Bucket';
+            btn.style.background = bucketMode ? '#ff8c00' : '#667eea';
+        }
+        setBucketButtonState();
+
+        function updateHistoryButtons() {
+            document.getElementById('undoBtn').disabled = undoStack.length === 0;
+            document.getElementById('redoBtn').disabled = redoStack.length === 0;
+        }
+
+        function saveState() {
+            try {
+                const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                undoStack.push(snapshot);
+                if (undoStack.length > 50) undoStack.shift();
+                redoStack = [];
+                updateHistoryButtons();
+            } catch (e) {
+                console.error('Failed to save canvas state', e);
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (bucketMode) {
+                drawing = false;
+                saveState();
+                floodFillAt(Math.floor(e.offsetX), Math.floor(e.offsetY));
+                updateHistoryButtons();
+                return;
+            }
+            drawing = true;
+            lastDrawPoint = { x: e.offsetX, y: e.offsetY };
+            saveState();
+            ctx.beginPath();
+            ctx.moveTo(lastDrawPoint.x, lastDrawPoint.y);
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            lastDrawPoint = null;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            drawing = false;
+            lastDrawPoint = null;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (drawing && !bucketMode) {
+                const x = e.offsetX;
+                const y = e.offsetY;
+                ctx.strokeStyle = penColor;
+                ctx.lineWidth = brushSize;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                lastDrawPoint = { x, y };
+            }
+        });
+
+        // Paint bucket flood fill
+        function floodFillAt(x, y) {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            const width = canvas.width;
+            const height = canvas.height;
+            const startIdx = (y * width + x) * 4;
+            const target = [data[startIdx], data[startIdx + 1], data[startIdx + 2], data[startIdx + 3]];
+            const fill = penColor === 'black' ? [0, 0, 0, 255] : [255, 255, 255, 255];
+            const tol = 20;
+
+            // If target already matches fill, exit early
+            if (Math.abs(target[0] - fill[0]) < tol && Math.abs(target[1] - fill[1]) < tol && Math.abs(target[2] - fill[2]) < tol && Math.abs(target[3] - fill[3]) < tol) {
+                return;
+            }
+
+            const visited = new Uint8Array(width * height);
+            const stack = [[x, y]];
+
+            function matches(idx) {
+                return Math.abs(data[idx] - target[0]) < tol &&
+                       Math.abs(data[idx + 1] - target[1]) < tol &&
+                       Math.abs(data[idx + 2] - target[2]) < tol &&
+                       Math.abs(data[idx + 3] - target[3]) < tol;
+            }
+
+            while (stack.length) {
+                const [cx, cy] = stack.pop();
+                if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+                const key = cy * width + cx;
+                if (visited[key]) continue;
+                const idx = key * 4;
+                if (!matches(idx)) continue;
+                visited[key] = 1;
+
+                data[idx] = fill[0];
+                data[idx + 1] = fill[1];
+                data[idx + 2] = fill[2];
+                data[idx + 3] = fill[3];
+
+                stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // Brush Size
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value, 10) || 5;
+            document.getElementById('brushSizeLabel').textContent = `${brushSize} px`;
+        });
+
+        // Pen Color
+        document.querySelectorAll('input[name="penColor"]').forEach(r => {
+            r.addEventListener('change', (e) => {
+                penColor = e.target.value;
+            });
+        });
+
+        document.getElementById('bucketBtn').addEventListener('click', () => {
+            bucketMode = !bucketMode;
+            setBucketButtonState();
+        });
+
+        // Undo/Redo
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            if (undoStack.length > 0) {
+                const current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const previous = undoStack.pop();
+                redoStack.push(current);
+                ctx.putImageData(previous, 0, 0);
+                updateHistoryButtons();
+            }
+        });
+
+        document.getElementById('redoBtn').addEventListener('click', () => {
+            if (redoStack.length > 0) {
+                const current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const next = redoStack.pop();
+                undoStack.push(current);
+                ctx.putImageData(next, 0, 0);
+                updateHistoryButtons();
+            }
+        });
+
+        // Done Editing
+        document.getElementById('editDone').addEventListener('click', () => {
+            editedImage = canvas.toDataURL().split(',')[1];
+            const editedImgDisplay = document.getElementById('editedImageDisplay');
+            editedImgDisplay.src = canvas.toDataURL();
+            // Keep editedImageDisplay hidden (used only as reference for selection canvas)
+            
+            // Show preview in layer setup
+            const layerSetupPreview = document.getElementById('layerSetupPreview');
+            layerSetupPreview.src = canvas.toDataURL();
+            layerSetupPreview.style.display = 'block';
+            
+            document.getElementById('drawingSection').style.display = 'none';
+            document.getElementById('layerSetup').style.display = 'block';
+        });
+
+        // Back to Image Selection
+        document.getElementById('backToImages').addEventListener('click', () => {
+            if (confirm('This will discard your current edits. Continue?')) {
+                document.getElementById('drawingSection').style.display = 'none';
+                document.getElementById('selectionSection').style.display = 'block';
+                document.getElementById('images').style.display = 'grid';
+                document.getElementById('select').style.display = 'block';
+                // Clear canvas and selections
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                undoStack = [];
+                redoStack = [];
+                updateHistoryButtons();
+            }
+        });
+
+        // Back to Edit
+        document.getElementById('backToEdit').addEventListener('click', () => {
+            document.getElementById('layerSetup').style.display = 'none';
+            document.getElementById('layers').innerHTML = '';
+            document.getElementById('selectionSection2').style.display = 'none';
+            document.getElementById('generateSTL').style.display = 'none';
+            document.getElementById('drawingSection').style.display = 'block';
+        });
+
+        // Set Layers
+        document.getElementById('setLayers').addEventListener('click', () => {
+            const numLayers = document.getElementById('numLayers').value;
+            const totalLength = parseFloat(document.getElementById('totalLength').value) || 10;
+            const layerHeight = "2.00";
+            const layersDiv = document.getElementById('layers');
+            layersDiv.innerHTML = '';
+            
+            for (let i = 0; i < numLayers; i++) {
+                const layerDiv = document.createElement('div');
+                layerDiv.className = 'layer-item';
+                layerDiv.id = `layer-item-${i}`;
+                layerDiv.innerHTML = `
+                    <h3>Layer ${i+1}</h3>
+                    <div class="layer-controls">
+                        <label>Height (mm)
+                            <input type="number" data-layer-height="${i}" value="${layerHeight}" min="0.1" step="0.1">
+                        </label>
+                        <label style="gap: 5px;">Position
+                            ${i === 0 ? '<strong>bottom layer</strong>' : `<select data-layer-pos="${i}">
+                                <option value="stack">Stack above previous</option>
+                                <option value="same">Same bottom as previous</option>
+                            </select>`}
+                        </label>
+                    </div>
+                    <div id="layerPreviewWrap-${i}" style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+                        <button id="selectBtn-${i}" onclick="selectShape(${i})">Select Shape</button>
+                        <img id="layerPreview-${i}" style="display:none; max-width:120px; max-height:120px; border:1px solid #ddd; border-radius:4px;" />
+                        <button id="reselectBtn-${i}" style="display:none;" onclick="selectShape(${i})">Re-select</button>
+                    </div>
+                `;
+                layersDiv.appendChild(layerDiv);
+            }
+            
+            document.getElementById('layerSetup').style.display = 'none';
+            document.getElementById('layersHeader').style.display = 'block';
+            document.getElementById('selectionSection2').style.display = 'block';
+        });
+
+        // Reconfigure Layers
+        document.getElementById('reconfigureLayers').addEventListener('click', () => {
+            if (confirm('This will reset all layer selections. Continue?')) {
+                document.getElementById('layers').innerHTML = '';
+                document.getElementById('layersHeader').style.display = 'none';
+                document.getElementById('selectionSection2').style.display = 'none';
+                document.getElementById('generateSTL').style.display = 'none';
+                document.getElementById('layerSetup').style.display = 'block';
+                layerSelections = {};
+                layerHeights = {};
+                currentLayerIndex = -1;
+            }
+        });
+
+        // Selection Mode
+        document.querySelectorAll('input[name="selMode"]').forEach(r => {
+            r.addEventListener('change', (e) => {
+                selectionMode = e.target.value;
+                // Show/hide lasso options based on selection
+                const lassoOptions = document.getElementById('lassoOptions');
+                if (lassoOptions) {
+                    lassoOptions.style.display = selectionMode === 'lasso' ? 'flex' : 'none';
+                }
+            });
+        });
+
+        // Edit Mode (Add/Subtract)
+        document.querySelectorAll('input[name="editMode"]').forEach(r => {
+            r.addEventListener('change', (e) => {
+                editMode = e.target.value;
+                const infoText = document.getElementById('selectInfoText');
+                if (infoText) {
+                    if (editMode === 'add') {
+                        infoText.textContent = 'Add Mode: Draw to ADD areas to the selection (shown in blue)';
+                    } else {
+                        infoText.textContent = 'Subtract Mode: Draw to REMOVE areas from the selection (shown in orange)';
+                    }
+                    const infoBox = document.getElementById('selectInfo');
+                    if (infoBox) infoBox.style.display = 'block';
+                }
+            });
+        });
+
+        // Zoom controls for selection canvas
+        const zoomLabel = document.getElementById('zoomLabel');
+        const selectCanvas = document.getElementById('selectCanvas');
+        function applyZoom() {
+            selectCanvas.style.transformOrigin = 'top left';
+            selectCanvas.style.transform = `scale(${selectionZoom})`;
+            zoomLabel.textContent = `${Math.round(selectionZoom * 100)}%`;
+        }
+        document.getElementById('zoomIn').addEventListener('click', () => {
+            selectionZoom = Math.min(3, selectionZoom + 0.1);
+            applyZoom();
+        });
+        document.getElementById('zoomOut').addEventListener('click', () => {
+            selectionZoom = Math.max(0.5, selectionZoom - 0.1);
+            applyZoom();
+        });
+        applyZoom();
+
+        function setActiveLayerCard(layerIndex) {
+            document.querySelectorAll('.layer-item').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`layer-item-${layerIndex}`);
+            if (target) {
+                target.classList.add('active');
+                target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // Select Shape
+        function selectShape(layerIndex) {
+            currentLayerIndex = layerIndex;
+            currentSelection = null; // clear previous selection when switching layers
+            setActiveLayerCard(layerIndex);
+            const selCanvas = document.getElementById('selectCanvas');
+            selCanvas.style.display = 'block';
+            const selCtx = selCanvas.getContext('2d');
+            const editedImgEl = document.getElementById('editedImageDisplay');
+            if (!editedImgEl || !editedImgEl.src) {
+                alert('Please finish editing the base image first.');
+                return;
+            }
+            editedImgEl.style.display = 'none';
+            const selControls = document.getElementById('selectionControls');
+            if (selControls) selControls.style.display = 'flex';
+            const zoomControls = document.getElementById('zoomControls');
+            if (zoomControls) zoomControls.style.display = 'flex';
+            const selectSection = document.getElementById('selectionSection2');
+            if (selectSection) selectSection.style.display = 'block';
+
+            // Reset modes and UI state for predictable behavior
+            selectionMode = 'wand';
+            editMode = 'add';
+            const lassoRadio = document.querySelector('input[name="selMode"][value="lasso"]');
+            const wandRadio = document.querySelector('input[name="selMode"][value="wand"]');
+            const addRadio = document.querySelector('input[name="editMode"][value="add"]');
+            const subRadio = document.querySelector('input[name="editMode"][value="subtract"]');
+            if (lassoRadio) lassoRadio.checked = false;
+            if (wandRadio) wandRadio.checked = true;
+            if (addRadio) addRadio.checked = true;
+            if (subRadio) subRadio.checked = false;
+            const lassoOptions = document.getElementById('lassoOptions');
+            if (lassoOptions) lassoOptions.style.display = 'none';
+            selectionZoom = 1;
+            applyZoom();
+            
+            const img = new Image();
+            img.onerror = () => {
+                alert('No edited image found. Please finish editing the base image first.');
+            };
+            img.onload = () => {
+                selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+                selCtx.drawImage(img, 0, 0, selCanvas.width, selCanvas.height);
+                
+                const infoBox = document.getElementById('selectInfo');
+                const infoText = document.getElementById('selectInfoText');
+                if (infoBox && infoText) {
+                    infoText.textContent = 'Add Mode: Draw to ADD areas to the selection (shown in blue)';
+                    infoBox.style.display = 'block';
+                }
+                document.getElementById('undoSelection').style.display = 'block';
+                document.getElementById('redoSelection').style.display = 'block';
+                document.getElementById('confirmSelection').style.display = 'inline-block';
+                document.getElementById('clearSelection').style.display = 'inline-block';
+                
+                lassoPath = [];
+                setupSelectionTool(selCanvas, selCtx);
+            };
+            img.src = document.getElementById('editedImageDisplay').src;
+        }
+
+        // Selection Tool Setup
+        function setupSelectionTool(canvas, ctx) {
+            const originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let selectionMask = new Uint8Array(canvas.width * canvas.height); // 1 = selected, 0 = not selected
+            let undoStackSelection = [];
+            let redoStackSelection = [];
+            
+            // Initialize from existing selection if any
+            if (currentSelection) {
+                const currData = currentSelection.data;
+                for (let i = 0; i < selectionMask.length; i++) {
+                    const idx = i * 4;
+                    // Check if pixel is black (selected)
+                    if (currData[idx] === 0 && currData[idx+1] === 0 && currData[idx+2] === 0 && currData[idx+3] === 255) {
+                        selectionMask[i] = 1;
+                    }
+                }
+            }
+            
+            function saveSelectionState() {
+                undoStackSelection.push(new Uint8Array(selectionMask));
+                if (undoStackSelection.length > 50) undoStackSelection.shift();
+                redoStackSelection = [];
+                updateSelectionButtons();
+            }
+            
+            function updateSelectionButtons() {
+                document.getElementById('undoSelection').disabled = undoStackSelection.length === 0;
+                document.getElementById('redoSelection').disabled = redoStackSelection.length === 0;
+            }
+            
+            function redrawWithSelection() {
+                ctx.putImageData(originalImageData, 0, 0);
+                
+                // Draw current selection mask with blue overlay
+                const overlayData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = overlayData.data;
+                for (let i = 0; i < selectionMask.length; i++) {
+                    if (selectionMask[i] === 1) {
+                        const idx = i * 4;
+                        data[idx] = 100; data[idx+1] = 150; data[idx+2] = 255; data[idx+3] = 100;
+                    }
+                }
+                ctx.putImageData(overlayData, 0, 0);
+            }
+            
+            updateSelectionButtons();
+            
+            const handleMouseDown = (e) => {
+                if (selectionMode !== 'lasso') return;
+                if (e.button !== 0) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
+                const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
+                lassoPath = [[x, y]];
+                isDrawingLasso = true;
+            };
+
+            const handleMouseMove = (e) => {
+                if (selectionMode !== 'lasso') return;
+                if (!isDrawingLasso || e.buttons !== 1) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
+                const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
+                lassoPath.push([x, y]);
+                
+                // Show real-time preview with current selection mask
+                redrawWithSelection();
+                
+                // Draw lasso path
+                ctx.strokeStyle = editMode === 'add' ? '#0064ff' : '#ff6400';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(lassoPath[0][0], lassoPath[0][1]);
+                for (let i = 1; i < lassoPath.length; i++) {
+                    ctx.lineTo(lassoPath[i][0], lassoPath[i][1]);
+                }
+                ctx.stroke();
+            };
+
+            // Helper function to apply selection with add/subtract modes
+            function applySelection(lassoMode = 'dominant') {
+                // Point-in-polygon test
+                function isPointInPolygon(x, y, poly) {
+                    let inside = false;
+                    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                        const xi = poly[i][0], yi = poly[i][1];
+                        const xj = poly[j][0], yj = poly[j][1];
+                        const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                        if (intersect) inside = !inside;
+                    }
+                    return inside;
+                }
+
+                const data = originalImageData.data;
+                let dr, dg, db, tol = 30;
+                
+                if (lassoMode === 'dominant') {
+                    // Dominant color mode: find dominant color within lasso region
+                    const colorCounts = new Map();
+                    
+                    for (let y = 0; y < canvas.height; y++) {
+                        for (let x = 0; x < canvas.width; x++) {
+                            if (isPointInPolygon(x, y, lassoPath)) {
+                                const idx = (y * canvas.width + x) * 4;
+                                const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+                                const colorKey = `${r},${g},${b}`;
+                                colorCounts.set(colorKey, (colorCounts.get(colorKey) || 0) + 1);
+                            }
+                        }
+                    }
+                    
+                    let dominantColor = null;
+                    let maxCount = 0;
+                    for (const [color, count] of colorCounts.entries()) {
+                        if (count > maxCount) {
+                            maxCount = count;
+                            dominantColor = color;
+                        }
+                    }
+                    
+                    if (!dominantColor) return;
+                    [dr, dg, db] = dominantColor.split(',').map(Number);
+                }
+                
+                // Apply selection
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+                        if (isPointInPolygon(x, y, lassoPath)) {
+                            const idx = (y * canvas.width + x) * 4;
+                            const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+                            
+                            let shouldSelect = false;
+                            if (lassoMode === 'dominant') {
+                                shouldSelect = Math.abs(r - dr) < tol && Math.abs(g - dg) < tol && Math.abs(b - db) < tol;
+                            } else if (lassoMode === 'all') {
+                                shouldSelect = true;
+                            } else if (lassoMode === 'white') {
+                                // White: high brightness (r, g, b all > 200)
+                                shouldSelect = r > 200 && g > 200 && b > 200;
+                            } else if (lassoMode === 'black') {
+                                // Black: low brightness (r, g, b all < 50)
+                                shouldSelect = r < 50 && g < 50 && b < 50;
+                            }
+                            
+                            if (shouldSelect) {
+                                const maskIdx = y * canvas.width + x;
+                                if (editMode === 'add') {
+                                    selectionMask[maskIdx] = 1;
+                                } else {
+                                    selectionMask[maskIdx] = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                redrawWithSelection();
+                
+                // Draw selection outline
+                ctx.strokeStyle = editMode === 'add' ? '#0064ff' : '#ff6400';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(lassoPath[0][0], lassoPath[0][1]);
+                for (let i = 1; i < lassoPath.length; i++) {
+                    ctx.lineTo(lassoPath[i][0], lassoPath[i][1]);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            // Helper function to apply magic wand selection with add/subtract modes
+            function applyWandSelection(startX, startY) {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                const startIdx = (startY * canvas.width + startX) * 4;
+                const sr = data[startIdx], sg = data[startIdx + 1], sb = data[startIdx + 2];
+                const tol = 30;
+
+                const inside = (r, g, b) => Math.abs(r - sr) < tol && Math.abs(g - sg) < tol && Math.abs(b - sb) < tol;
+
+                const visited = new Set();
+                const stack = [[startX, startY]];
+
+                while (stack.length) {
+                    const [x, y] = stack.pop();
+                    const key = `${x},${y}`;
+                    if (visited.has(key) || x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
+                    visited.add(key);
+
+                    const idx = (y * canvas.width + x) * 4;
+                    const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+                    if (!inside(r, g, b)) continue;
+
+                    const maskIdx = y * canvas.width + x;
+                    if (editMode === 'add') {
+                        selectionMask[maskIdx] = 1;
+                    } else {
+                        selectionMask[maskIdx] = 0;
+                    }
+
+                    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+                }
+
+                redrawWithSelection();
+            }
+
+            const finishLasso = () => {
+                if (selectionMode !== 'lasso') return;
+                if (isDrawingLasso && lassoPath.length > 2) {
+                    isDrawingLasso = false;
+                    saveSelectionState();
+                    const lassoMode = document.getElementById('lassoMode') ? document.getElementById('lassoMode').value : 'dominant';
+                    applySelection(lassoMode);
+                }
+                isDrawingLasso = false;
+            };
+
+            canvas.onmousedown = handleMouseDown;
+            canvas.onmousemove = handleMouseMove;
+            canvas.onmouseup = finishLasso;
+
+            // Magic Wand
+            canvas.onclick = (e) => {
+                if (selectionMode !== 'wand') return;
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
+                const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
+                wandPoint = { x, y };
+                saveSelectionState();
+                applyWandSelection(x, y);
+            };
+            
+            // Undo/Redo handlers
+            document.getElementById('undoSelection').onclick = () => {
+                if (undoStackSelection.length > 0) {
+                    redoStackSelection.push(new Uint8Array(selectionMask));
+                    const previousState = undoStackSelection.pop();
+                    selectionMask.set(previousState);
+                    redrawWithSelection();
+                    updateSelectionButtons();
+                }
+            };
+            
+            document.getElementById('redoSelection').onclick = () => {
+                if (redoStackSelection.length > 0) {
+                    undoStackSelection.push(new Uint8Array(selectionMask));
+                    const nextState = redoStackSelection.pop();
+                    selectionMask.set(nextState);
+                    redrawWithSelection();
+                    updateSelectionButtons();
+                }
+            };
+            
+            document.getElementById('clearSelection').onclick = () => {
+                lassoPath = [];
+                wandPoint = null;
+                saveSelectionState();
+                selectionMask.fill(0);
+                ctx.putImageData(originalImageData, 0, 0);
+            };
+            
+            document.getElementById('confirmSelection').onclick = () => {
+                // Create final selection image with white background and black for selected areas
+                const finalSelection = ctx.createImageData(canvas.width, canvas.height);
+                const finalData = finalSelection.data;
+                
+                // Fill with white
+                for (let i = 0; i < finalData.length; i += 4) {
+                    finalData[i] = 255; finalData[i+1] = 255; finalData[i+2] = 255; finalData[i+3] = 255;
+                }
+                
+                // Set selected pixels to black
+                for (let i = 0; i < selectionMask.length; i++) {
+                    if (selectionMask[i] === 1) {
+                        const idx = i * 4;
+                        finalData[idx] = 0; finalData[idx+1] = 0; finalData[idx+2] = 0; finalData[idx+3] = 255;
+                    }
+                }
+                
+                // Create temporary canvas to generate data URL
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.putImageData(finalSelection, 0, 0);
+                
+                layerSelections[currentLayerIndex] = tempCanvas.toDataURL();
+                currentSelection = finalSelection;
+
+                // Update layer preview UI
+                const previewEl = document.getElementById(`layerPreview-${currentLayerIndex}`);
+                const selectBtnEl = document.getElementById(`selectBtn-${currentLayerIndex}`);
+                const reselectBtnEl = document.getElementById(`reselectBtn-${currentLayerIndex}`);
+                if (previewEl) {
+                    previewEl.src = layerSelections[currentLayerIndex];
+                    previewEl.style.display = 'block';
+                }
+                if (selectBtnEl) selectBtnEl.style.display = 'none';
+                if (reselectBtnEl) reselectBtnEl.style.display = 'inline-block';
+                
+                lassoPath = [];
+                wandPoint = null;
+                
+                // Check if all layers are selected and show Generate STL button
+                const numLayers = parseInt(document.getElementById('numLayers').value);
+                let allSelected = true;
+                for (let i = 0; i < numLayers; i++) {
+                    if (!layerSelections[i]) {
+                        allSelected = false;
+                        break;
+                    }
+                }
+                if (allSelected) {
+                    document.getElementById('generateSTL').style.display = 'block';
+                }
+                
+                alert(`Layer ${currentLayerIndex + 1} selection saved! You can continue adding or subtracting areas.`);
+            };
+        }
+
+        // Generate STL
+        document.getElementById('generateSTL').addEventListener('click', async () => {
+            const numLayers = document.getElementById('numLayers').value;
+            const missingLayers = [];
+            
+            for (let i = 0; i < numLayers; i++) {
+                if (!layerSelections[i]) {
+                    missingLayers.push(i + 1);
+                }
+            }
+            
+            if (missingLayers.length > 0) {
+                alert(`Please select shapes for layers: ${missingLayers.join(', ')}`);
+                return;
+            }
+            
+            const layersArray = [];
+            const heightsArray = [];
+            const positionsArray = [];
+            
+            try {
+                for (let i = 0; i < numLayers; i++) {
+                    const layerData = layerSelections[i];
+                    if (!layerData) {
+                        throw new Error(`Layer ${i + 1} has no data`);
+                    }
+                    // Extract base64 part from data URL (format: data:image/png;base64,<data>)
+                    const parts = layerData.split(',');
+                    if (parts.length < 2) {
+                        throw new Error(`Layer ${i + 1} has invalid data format`);
+                    }
+                    layersArray.push(parts[1]);
+                    
+                    const heightInput = document.querySelector(`input[data-layer-height="${i}"]`);
+                    const hVal = heightInput ? parseFloat(heightInput.value) : 2;
+                    const safeHeight = isNaN(hVal) ? 2 : Math.max(0.1, hVal);
+                    layerHeights[i] = safeHeight;
+                    heightsArray.push(safeHeight);
+                    
+                    const posInput = document.querySelector(`select[data-layer-pos="${i}"]`);
+                    const posVal = posInput ? posInput.value : 'stack';
+                    positionsArray.push(posVal === 'same' ? 'same' : 'stack');
+                }
+                
+                document.getElementById('status').textContent = 'Generating STL files...';
+                
+                const response = await fetch('/generate_stl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ layers: layersArray, num_layers: numLayers, heights: heightsArray, positions: positionsArray })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error generating STL: ' + data.error);
+                    document.getElementById('status').textContent = 'Error generating STL';
+                    return;
+                }
+                
+                // Download the ZIP file
+                const a = document.createElement('a');
+                a.href = 'data:application/zip;base64,' + data.zip_file;
+                a.download = 'stl_layers.zip';
+                a.click();
+                
+                document.getElementById('status').textContent = `Generated ${data.num_layers} STL files in ZIP!`;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+                document.getElementById('status').textContent = 'Error generating STL files';
+            }
+        });
+    </script>
+</body>
+</html>
